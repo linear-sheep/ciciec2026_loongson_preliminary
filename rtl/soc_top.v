@@ -523,17 +523,17 @@ wire [1 :0] dvi_bresp  ;
 wire        dvi_bvalid ;
 wire        dvi_bready ;
 
-assign dvi_arready  = 1'b1;
-assign dvi_rid      = 5'b0;
-assign dvi_rdata    = 32'b0;
-assign dvi_rresp    = 2'b0;
-assign dvi_rlast    = 1'b0;
-assign dvi_rvalid   = 1'b0;
-assign dvi_awready  = 1'b1;
-assign dvi_wready   = 1'b1;
-assign dvi_bid      = 5'b0;
-assign dvi_bresp    = 2'b0;
-assign dvi_bvalid   = 1'b0;
+// assign dvi_arready  = 1'b1;
+// assign dvi_rid      = 5'b0;
+// assign dvi_rdata    = 32'b0;
+// assign dvi_rresp    = 2'b0;
+// assign dvi_rlast    = 1'b0;
+// assign dvi_rvalid   = 1'b0;
+// assign dvi_awready  = 1'b1;
+// assign dvi_wready   = 1'b1;
+// assign dvi_bid      = 5'b0;
+// assign dvi_bresp    = 2'b0;
+// assign dvi_bvalid   = 1'b0;
 
 //axi confreg
 wire [4 :0] confreg_arid   ;
@@ -1104,7 +1104,8 @@ AxiCrossbar_2x8  u_AxiCrossbar_2x8 (
 );
 
 core_top u_cpu(
-    .intrpt     (8'h0          ), // high active
+    // .intrpt     (8'h0          ), // high active
+    .intrpt     (cpu_intrpt_sync2), //high active
 
     .aclk       (cpu_clk       ),
     .aresetn    (cpu_resetn    ), // low active
@@ -1378,6 +1379,56 @@ axi_uart_controller u_axi_uart_controller (
     .uart0_int      (uart0_int      )
 );
 
+axi_dvi u_axi_dvi (
+    .s_awvalid  ( dvi_awvalid   ),
+    .s_awaddr   ( dvi_awaddr    ),
+    .s_awid     ( dvi_awid      ),
+    .s_awlen    ( dvi_awlen     ),
+    .s_awsize   ( dvi_awsize    ),
+    .s_awburst  ( dvi_awburst   ),
+    .s_awlock   ( dvi_awlock    ),
+    .s_awcache  ( dvi_awcache   ),
+    .s_awprot   ( dvi_awprot    ),
+    .s_wvalid   ( dvi_wvalid    ),
+    .s_wdata    ( dvi_wdata     ),
+    .s_wstrb    ( dvi_wstrb     ),
+    .s_wlast    ( dvi_wlast     ),
+    .s_bready   ( dvi_bready    ),
+    .s_arvalid  ( dvi_arvalid   ),
+    .s_araddr   ( dvi_araddr    ),
+    .s_arid     ( dvi_arid      ),
+    .s_arlen    ( dvi_arlen     ),
+    .s_arsize   ( dvi_arsize    ),
+    .s_arburst  ( dvi_arburst   ),
+    .s_arlock   ( dvi_arlock    ),
+    .s_arcache  ( dvi_arcache   ),
+    .s_arprot   ( dvi_arprot    ),
+    .s_rready   ( dvi_rready    ),
+    
+    .aclk       ( sys_clk       ),
+    .aresetn    ( sys_resetn    ),
+    
+    .s_awready  ( dvi_awready   ),
+    .s_wready   ( dvi_wready    ),
+    .s_bvalid   ( dvi_bvalid    ),
+    .s_bid      ( dvi_bid       ),
+    .s_bresp    ( dvi_bresp     ),
+    .s_arready  ( dvi_arready   ),
+    .s_rvalid   ( dvi_rvalid    ),
+    .s_rdata    ( dvi_rdata     ),
+    .s_rid      ( dvi_rid       ),
+    .s_rresp    ( dvi_rresp     ),
+    .s_rlast    ( dvi_rlast     ),
+    
+    .video_clk  ( video_clk     ),
+    .hsync      ( video_hsync   ),
+    .vsync      ( video_vsync   ),
+    .data_enable( video_de      ),
+    .video_red  ( video_red     ),
+    .video_green( video_green   ),
+    .video_blue ( video_blue    )
+);
+
 confreg #(
     .SIMULATION(SIMULATION)
 ) u_confreg (
@@ -1430,7 +1481,25 @@ confreg #(
     .touch_btn      ( touch_btn       ),
     .dma_finish     ( 1'b0            ),
     .fft_finish     ( 1'b0            ),
-    .confreg_int    (                 )
+    .confreg_int    ( confreg_int     )
 );
+
+// 中断处理：合并外部中断（confreg_int）和 UART 中断
+// 中断寄存器在 confreg 内部实现，通过 AXI 接口读写
+wire [7:0] cpu_intrpt_pre;
+assign cpu_intrpt_pre[0] = uart0_int | confreg_int;  // HWI0 = UART + 外部中断
+assign cpu_intrpt_pre[7:1] = 7'b0;
+
+// 异步信号处理（延迟打拍）- 消除亚稳态
+reg [7:0] cpu_intrpt_sync1, cpu_intrpt_sync2;
+always @(posedge cpu_clk or negedge cpu_resetn) begin
+    if (!cpu_resetn) begin
+        cpu_intrpt_sync1 <= 8'b0;
+        cpu_intrpt_sync2 <= 8'b0;
+    end else begin
+        cpu_intrpt_sync1 <= cpu_intrpt_pre;
+        cpu_intrpt_sync2 <= cpu_intrpt_sync1;
+    end
+end
 
 endmodule
