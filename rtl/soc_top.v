@@ -472,17 +472,7 @@ wire [1 :0] axiOut_1_bresp  ;
 wire        axiOut_1_bvalid ;
 wire        axiOut_1_bready ;
 
-assign axiOut_1_arready = 1'b1;
-assign axiOut_1_rid    = 5'b0;
-assign axiOut_1_rdata  = 32'b0;
-assign axiOut_1_rresp  = 2'b0;
-assign axiOut_1_rlast  = 1'b0;
-assign axiOut_1_rvalid = 1'b0;
-assign axiOut_1_awready = 1'b1;
-assign axiOut_1_wready = 1'b1;
-assign axiOut_1_bid    = 5'b0;
-assign axiOut_1_bresp = 2'b0;
-assign axiOut_1_bvalid = 1'b0;
+// Sobel accelerator will handle these signals
 
 
 //axi dvi
@@ -1101,6 +1091,50 @@ AxiCrossbar_2x8  u_AxiCrossbar_2x8 (
     .axiOut_7_rresp          ( axiOut_7_rresp     ),
     .axiOut_7_rlast          ( axiOut_7_rlast     )
 
+);
+
+// Sobel Edge Detection Accelerator
+axi_sobel_accelerator #(
+    .AXI_ID_WIDTH   (5),
+    .AXI_ADDR_WIDTH (32),
+    .AXI_DATA_WIDTH (32),
+    .IMG_WIDTH      (1280)
+) u_sobel_accelerator (
+    .clk            (sys_clk           ),
+    .resetn         (sys_resetn        ),
+    // Write Address Channel
+    .s_axi_awaddr   (axiOut_1_awaddr   ),
+    .s_axi_awid     (axiOut_1_awid[4:0]),
+    .s_axi_awlen    (axiOut_1_awlen    ),
+    .s_axi_awsize   (axiOut_1_awsize   ),
+    .s_axi_awburst  (axiOut_1_awburst  ),
+    .s_axi_awvalid  (axiOut_1_awvalid  ),
+    .s_axi_awready  (axiOut_1_awready  ),
+    // Write Data Channel
+    .s_axi_wdata    (axiOut_1_wdata    ),
+    .s_axi_wstrb    (axiOut_1_wstrb    ),
+    .s_axi_wlast    (axiOut_1_wlast    ),
+    .s_axi_wvalid   (axiOut_1_wvalid   ),
+    .s_axi_wready   (axiOut_1_wready   ),
+    // Write Response Channel
+    .s_axi_bvalid   (axiOut_1_bvalid   ),
+    .s_axi_bready   (axiOut_1_bready   ),
+    .s_axi_bresp    (axiOut_1_bresp    ),
+    .s_axi_bid      (axiOut_1_bid[4:0] ),
+    // Read Address Channel
+    .s_axi_araddr   (axiOut_1_araddr   ),
+    .s_axi_arid     (axiOut_1_arid[4:0]),
+    .s_axi_arlen    (axiOut_1_arlen    ),
+    .s_axi_arsize   (axiOut_1_arsize   ),
+    .s_axi_arburst  (axiOut_1_arburst  ),
+    .s_axi_arvalid  (axiOut_1_arvalid  ),
+    .s_axi_arready  (axiOut_1_arready  ),
+    // Read Data Channel
+    .s_axi_rdata    (axiOut_1_rdata    ),
+    .s_axi_rresp    (axiOut_1_rresp    ),
+    .s_axi_rlast    (axiOut_1_rlast    ),
+    .s_axi_rvalid   (axiOut_1_rvalid   ),
+    .s_axi_rready   (axiOut_1_rready   )
 );
 
 core_top u_cpu(
